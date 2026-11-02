@@ -1,14 +1,85 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container-fluid page-shell section-space">
-  <div class="dashboard-intro"><div><div class="eyebrow">BOOK CATALOG</div><h1>만화책 둘러보기</h1><p>읽고 싶은 책을 검색하고 카테고리별로 살펴보세요.</p></div><span class="result-count">{{ books|length }}권</span></div>
+  <div class="dashboard-intro">
+    <div>
+      <div class="eyebrow">BOOK CATALOG</div>
+      <h1>만화책 둘러보기</h1>
+      <p>책을 신청하면 관리자가 재고를 확인합니다. 승인 후 학교에서 간식 교환과 함께 수령하세요.</p>
+    </div>
+    <span class="result-count">{{ books|length }}권</span>
+  </div>
+
+  <div class="notice-strip mt-3">
+    <i class="bi bi-info-circle"></i>
+    <div>
+      <strong>신청 전 안내</strong>
+      <span>학교에서 1,000원 이상 간식 1개를 준비해 3반으로 가져오면 담당 선생님이 대출증과 교환해 드립니다.</span>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
   <form class="catalog-toolbar" method="get" action="{{ url_for('student.books') }}">
-    <div class="search-wrap"><i class="bi bi-search"></i><input name="q" value="{{ query }}" type="search" placeholder="제목이나 작가를 검색하세요" aria-label="책 검색"></div>
-    <select name="category" class="form-select category-select" aria-label="카테고리 필터"><option value="">모든 카테고리</option>{% for item in categories %}<option value="{{ item }}" {% if selected_category == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
+    <div class="search-wrap">
+      <i class="bi bi-search"></i>
+      <input name="q" value="{{ query }}" type="search" placeholder="책 제목이나 회차를 검색하세요" aria-label="책 검색">
+    </div>
     <button class="btn btn-primary" type="submit">검색</button>
   </form>
+
   {% if books %}
-  <div class="row g-4 mt-1">{% for book in books %}<div class="col-sm-6 col-lg-4 col-xl-3"><article class="book-card"><div class="book-cover {% if loop.index % 3 == 0 %}cover-navy{% elif loop.index % 2 == 0 %}cover-cream{% else %}cover-blue{% endif %}">{% if book.cover_url %}<img src="{{ book.cover_url }}" alt="{{ book.title }} 표지">{% else %}<span>{{ book.title[:1] }}</span><small>BOOKMARU</small>{% endif %}</div><div class="book-card-body"><span class="book-category">{{ book.category }}</span><h2>{{ book.title }}</h2><p class="book-author">{{ book.author }}</p><p class="book-description">{{ book.description or "설명이 아직 등록되지 않았습니다." }}</p><div class="book-meta"><span class="availability-dot {% if book.available_stock > 0 %}is-available{% endif %}"></span>{% if book.available_stock > 0 %}대여 가능{% else %}대여 준비 중{% endif %}<span class="ms-auto">{{ book.available_stock }}/{{ book.total_stock }}</span></div></div></article></div>{% endfor %}</div>
-  {% else %}<div class="catalog-empty"><div class="empty-icon"><i class="bi bi-bookshelf"></i></div><h2>{% if query or selected_category %}조건에 맞는 책이 없습니다{% else %}아직 등록된 책이 없습니다{% endif %}</h2><p>{% if query or selected_category %}검색어나 카테고리 필터를 바꾸어 다시 시도해보세요.{% else %}관리자가 책을 등록하면 이곳에서 표지와 함께 만나볼 수 있어요.{% endif %}</p>{% if query or selected_category %}<a href="{{ url_for('student.books') }}" class="btn btn-outline-primary">필터 초기화</a>{% endif %}</div>{% endif %}
+    <div class="row g-4 mt-1">
+      {% for book in books %}
+        <div class="col-sm-6 col-lg-4 col-xl-3">
+          <article class="book-card">
+            <div class="book-cover cover-blue">
+              {% if book.cover_url %}
+                <img src="{{ book.cover_url }}" alt="{{ book.title }} 표지">
+              {% else %}
+                <span>{{ book.title[:1] }}</span><small>BOOKMARU</small>
+              {% endif %}
+            </div>
+            <div class="book-card-body">
+              <h2>{{ book.title }}{% if book.episode %} · {{ book.episode }}{% endif %}</h2>
+              {% if book.description %}<p class="book-description">{{ book.description }}</p>{% endif %}
+              <div class="book-meta">
+                <span class="availability-dot {% if book.available_stock > 0 %}is-available{% endif %}"></span>
+                대출 가능 재고 {{ book.available_stock }}/{{ book.total_stock }}권
+              </div>
+              {% if approved_counts.get(book.id, 0) > 0 %}
+                <p class="small text-muted mt-2 mb-0">수령 대기 {{ approved_counts[book.id] }}건</p>
+              {% endif %}
+              {% if borrowed_counts.get(book.id, 0) > 0 %}
+                <div class="alert alert-warning py-2 px-3 mt-2 mb-0">
+                  현재 {{ borrowed_counts[book.id] }}권 대출 중입니다. 예약하면 순번대로 안내합니다.
+                </div>
+              {% endif %}
+              {% if current_user.is_authenticated and current_user.role == 'student' %}
+                <form method="post" action="{{ url_for('student.reserve', book_id=book.id) }}" class="mt-3"
+                      onsubmit="return confirm(['신청 전 안내', '학교에서 1,000원 이상 간식 1개를 준비해 3반으로 가져오면 담당 선생님이 대출증과 교환해 드립니다.', '', '안내사항을 확인했고 신청하시겠습니까?'].join(String.fromCharCode(10)));">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-primary btn-sm w-100">
+                    {% if borrowed_counts.get(book.id, 0) > 0 %}대출 중 (예약하기){% else %}신청하기{% endif %}
+                  </button>
+                </form>
+              {% else %}
+                <a class="btn btn-outline-primary btn-sm w-100 mt-3" href="{{ url_for('student.login') }}">로그인 후 신청</a>
+              {% endif %}
+            </div>
+          </article>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="catalog-empty">
+      <h2>등록된 책이 없습니다.</h2>
+      <p>검색 조건을 바꾸거나 관리자에게 책 등록을 요청하세요.</p>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

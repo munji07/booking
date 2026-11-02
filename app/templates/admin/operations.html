@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="sidebar-label">BOOKMARU ADMIN</div><div class="sidebar-title">운영 센터</div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('admin.dashboard') }}">대시보드</a>
+      <a href="{{ url_for('admin.students') }}">학생 관리</a>
+      <a href="{{ url_for('admin.books') }}">만화책 관리</a>
+      <a href="{{ url_for('admin.reservations') }}">예약 관리</a>
+      <a class="active" href="{{ url_for('admin.operations') }}">대여 운영</a>
+    </nav>
+  </aside>
+  <section class="admin-main">
+    <div class="dashboard-intro"><div><div class="eyebrow">ADMINISTRATION / CIRCULATION</div><h1>대여 운영</h1><p>예약 수령, 현장 대여, 간식 교환과 반납을 한 화면에서 처리합니다.</p></div></div>
+    {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}
+
+    <div class="panel-card mb-4">
+      <h2>예약 도서 수령 처리</h2>
+      <p class="text-muted">1,000원 이상 간식 1개를 확인하고, 수령 당일 수령 후 최대 3교시 안에 반납하도록 입력하세요.</p>
+      <div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>학생</th><th>도서</th><th>신청</th><th>수령·반납·교환 정보</th><th></th></tr></thead>
+        <tbody>
+        {% for item in reservations %}
+          <tr>
+            <td>{{ item.student.name if item.student else (item.user.username if item.user else '-') }}<br><small>{{ item.student.grade ~ '학년 ' ~ item.student.class_name ~ '반' if item.student else '' }}</small></td>
+            <td>{{ item.book.title }}{% if item.book.episode %} · {{ item.book.episode }}{% endif %}<br><small>도서 순번 {{ item.queue_number or '-' }}번 · 신청 재고 확정</small></td>
+            <td>{{ format_kst(item.requested_at) }}</td>
+            <td colspan="2">
+              <form method="post" class="row g-2 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="issue_reserved"><input type="hidden" name="reservation_id" value="{{ item.id }}">
+                <div class="col-6 col-md"><label class="form-label">수령 교시</label><input class="form-control" type="number" min="1" max="12" name="receive_period" value="1" required></div>
+                <div class="col-6 col-md"><label class="form-label">반납 날짜</label><input class="form-control" type="date" name="return_date" min="{{ today }}" max="{{ today }}" value="{{ today }}" required></div>
+                <div class="col-6 col-md"><label class="form-label">반납 교시</label><input class="form-control" type="number" min="2" max="12" name="return_period" value="3" required></div>
+                <div class="col-6 col-md"><label class="form-label">간식 가격 (원)</label><input class="form-control" type="number" min="1000" name="snack_price" value="1000" required></div>
+                <div class="col-12"><label class="form-check"><input class="form-check-input" type="checkbox" name="snack_confirmed" value="1" required> 1,000원 이상 간식 1개를 실제로 확인했습니다.</label></div>
+                <div class="col-12 col-md-auto"><button class="btn btn-primary">간식 확인 후 대여증 발급</button></div>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">수령 대기 중인 예약이 없습니다.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="panel-card mb-4">
+      <h2>현장 즉시 대여</h2>
+      <p class="text-muted">예약 없이 방문한 학생도 명부에서 선택해 바로 대여할 수 있습니다. 계정 가입 전 학생도 명부에 등록되어 있으면 처리 가능합니다.</p>
+      <form method="post" class="row g-3 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="walk_in">
+        <div class="col-md-4"><label class="form-label" for="walk-in-student">학생</label><select class="form-select" id="walk-in-student" name="student_id" required><option value="">학생 선택</option>{% for student in students %}<option value="{{ student.id }}">{{ student.grade }}학년 {{ student.class_name }}반 {{ student.name }} · {{ student.internal_id }}</option>{% endfor %}</select></div>
+        <div class="col-md-4"><label class="form-label" for="walk-in-book">도서</label><select class="form-select" id="walk-in-book" name="book_id" required><option value="">도서 선택</option>{% for book in books %}{% set unreserved_stock = book.available_stock - approved_counts.get(book.id, 0) %}<option value="{{ book.id }}" {% if unreserved_stock < 1 %}disabled{% endif %}>{{ book.title }}{% if book.episode %} · {{ book.episode }}{% endif %} · 즉시 대여 {{ unreserved_stock }}권 (현장 {{ book.available_stock }}/{{ book.total_stock }}권)</option>{% endfor %}</select></div>
+        <div class="col-6 col-md-1"><label class="form-label">수령 교시</label><input class="form-control" type="number" min="1" max="12" name="receive_period" value="1" required></div>
+        <div class="col-6 col-md-2"><label class="form-label">반납 날짜</label><input class="form-control" type="date" name="return_date" min="{{ today }}" max="{{ today }}" value="{{ today }}" required></div>
+        <div class="col-6 col-md-1"><label class="form-label">반납 교시</label><input class="form-control" type="number" min="2" max="12" name="return_period" value="3" required></div>
+        <div class="col-6 col-md-2"><label class="form-label">간식 가격 (원)</label><input class="form-control" type="number" min="1000" name="snack_price" value="1000" required></div>
+        <div class="col-12"><label class="form-check"><input class="form-check-input" type="checkbox" name="snack_confirmed" value="1" required> 1,000원 이상 간식 1개를 실제로 확인했습니다.</label></div>
+        <div class="col-12"><button class="btn btn-primary" {% if not students or not books %}disabled{% endif %}>간식 확인 후 대출 등록</button></div>
+      </form>
+    </div>
+
+    <div class="panel-card">
+      <h2>현재 대여 중 · 반납 처리</h2>
+      <div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>학생</th><th>도서 / 대출증</th><th>수령</th><th>반납 예정</th><th></th></tr></thead>
+        <tbody>
+        {% for loan in loans %}
+          <tr>
+            <td>{{ loan.student.name if loan.student else (loan.user.username if loan.user else '-') }}<br><small>{{ loan.student.grade ~ '학년 ' ~ loan.student.class_name ~ '반' if loan.student else '' }}</small></td>
+            <td>{{ loan.book.title }}{% if loan.book.episode %} · {{ loan.book.episode }}{% endif %}<br><small>대출증 {{ loan.reservation.paper_ticket.ticket_number if loan.reservation.paper_ticket else '-' }}</small></td>
+            <td>{{ format_kst(loan.borrowed_at) }} · {{ loan.reservation.paper_ticket.receive_period or '-' if loan.reservation.paper_ticket else '-' }}교시</td>
+            <td>{% if loan.reservation.paper_ticket %}{{ loan.reservation.paper_ticket.return_date or '-' }} · {{ loan.reservation.paper_ticket.return_period or '-' }}교시{% else %}-{% endif %}</td>
+            <td><a class="btn btn-sm btn-outline-secondary mb-1" href="{{ url_for('admin.print_ticket', loan_id=loan.id) }}">대출증 인쇄</a><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="return_loan"><input type="hidden" name="loan_id" value="{{ loan.id }}"><button class="btn btn-sm btn-outline-primary">반납 처리</button></form></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">현재 대여 중인 도서가 없습니다.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .ticket-card { max-width: 720px; margin: 3rem auto; border: 2px solid #1d3557; border-radius: 1rem; padding: 2rem; }
+  .ticket-number { font-size: 2rem; font-weight: 700; letter-spacing: .12em; }
+  @media print {
+    @page { size: A5 landscape; margin: 12mm; }
+    .site-nav, .ticket-actions, .site-footer { display: none !important; }
+    .ticket-card { max-width: none; margin: 0; border: 2px solid #000; box-shadow: none; }
+  }
+</style>
+<main class="container">
+  <article class="ticket-card">
+    <div class="eyebrow">BOOKMARU / SCHOOL LIBRARY</div>
+    <h1>도서 대출증</h1>
+    <div class="ticket-number">{{ ticket.ticket_number }}</div>
+    <hr>
+    <div class="row g-3">
+      <div class="col-6"><strong>학생</strong><br>{{ loan.student.name if loan.student else (loan.user.username if loan.user else '-') }}{% if loan.student %} · {{ loan.student.grade }}학년 {{ loan.student.class_name }}반 · {{ loan.student.internal_id }}{% endif %}</div>
+      <div class="col-6"><strong>도서</strong><br>{{ loan.book.title }}{% if loan.book.episode %} · {{ loan.book.episode }}{% endif %}</div>
+      <div class="col-6"><strong>수령</strong><br>{{ format_kst(ticket.issued_at) }} · {{ ticket.receive_period or '-' }}교시</div>
+      <div class="col-6"><strong>반납 예정</strong><br>{{ ticket.return_date or '-' }} · {{ ticket.return_period or '-' }}교시</div>
+      <div class="col-6"><strong>간식 교환</strong><br>{% if loan.reservation.snack_exchange %}1개 확인 완료 · {{ loan.reservation.snack_exchange.unit_price or '이전 기록' }}{% if loan.reservation.snack_exchange.unit_price %}원{% endif %}{% else %}확인 기록 없음{% endif %}</div>
+      <div class="col-6"><strong>대출 상태</strong><br>{% if loan.status == 'borrowed' %}대여 중{% else %}반납 완료{% endif %}</div>
+    </div>
+    <p class="mt-4 mb-0">반납 예정 날짜와 교시에 도서를 담당자에게 반납해 주세요.</p>
+  </article>
+  <div class="ticket-actions text-center"><button class="btn btn-primary" onclick="window.print()">대출증 인쇄</button> <a class="btn btn-outline-secondary" href="{{ url_for('admin.operations') }}">대여 운영으로</a></div>
+</main>
+{% endblock %}

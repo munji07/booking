@@ -1,4 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="admin-layout"><aside class="admin-sidebar"><div class="sidebar-label">BOOKMARU ADMIN</div><div class="sidebar-title">운영 센터</div><nav class="sidebar-nav"><a class="active" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-grid-1x2"></i>대시보드</a><a href="{{ url_for('admin.students') }}"><i class="bi bi-people"></i>학생 관리</a><a href="{{ url_for('admin.books') }}"><i class="bi bi-book"></i>만화책 관리</a><a href="{{ url_for('admin.reservations') }}"><i class="bi bi-calendar2-check"></i>예약 관리</a><a href="{{ url_for('admin.operations') }}"><i class="bi bi-box-seam"></i>대여 운영</a></nav><div class="sidebar-footer"><span class="status-dot"></span> 시스템 기반 준비 중</div></aside><section class="admin-main"><div class="dashboard-intro"><div><div class="eyebrow">ADMINISTRATION</div><h1>대시보드</h1><p>대여 흐름을 한눈에 확인하세요.</p></div><span class="phase-badge"><i class="bi bi-shield-lock"></i> 권한 연결 전</span></div><div class="notice-strip"><i class="bi bi-shield-check"></i><div><strong>관리자 인증은 PHASE 2에서 연결됩니다.</strong><span>현재 지표는 실제 데이터베이스 집계값이며 임의 샘플을 사용하지 않습니다.</span></div></div><div class="row g-3 mt-1">{% for key, label, icon in [('students','전체 학생','bi-people'),('books','전체 만화책','bi-book'),('pending','예약 대기','bi-hourglass-split'),('approved','승인된 예약','bi-check2-circle'),('borrowed','대여 중','bi-arrow-left-right'),('returned','반납 완료','bi-arrow-return-left'),('snacks','간식 교환 완료','bi-cookie'),('logs','활동 로그','bi-list-check')] %}<div class="col-6 col-xl-3"><div class="metric-card compact"><span>{{ label }}</span><strong>{{ stats[key] }}</strong><i class="bi {{ icon }} metric-icon"></i></div></div>{% endfor %}</div><div class="panel-card mt-4"><div class="panel-header"><div><div class="eyebrow">OPERATIONS SNAPSHOT</div><h2>운영 현황</h2></div><span class="table-caption">데이터베이스 연결됨</span></div><div class="table-responsive"><table class="table align-middle admin-table"><thead><tr><th>업무 영역</th><th>현재 상태</th><th>다음 연결 단계</th></tr></thead><tbody><tr><td><i class="bi bi-person-vcard table-icon"></i> 학생·가입 코드</td><td><span class="soft-badge">준비 중</span></td><td>관리자 인증과 코드 발급</td></tr><tr><td><i class="bi bi-book table-icon"></i> 만화책 카탈로그</td><td><span class="soft-badge">기반 연결</span></td><td>등록·수정·표지 업로드</td></tr><tr><td><i class="bi bi-ticket-perforated table-icon"></i> 예약·대여 운영</td><td><span class="soft-badge">준비 중</span></td><td>승인, 사물함, 종이 대여증</td></tr></tbody></table></div></div></section></div>
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="sidebar-label">BOOKMARU ADMIN</div><div class="sidebar-title">운영 센터</div>
+    <nav class="sidebar-nav">
+      <a class="active" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-grid-1x2"></i>대시보드</a>
+      <a href="{{ url_for('admin.students') }}"><i class="bi bi-people"></i>학생 관리</a>
+      <a href="{{ url_for('admin.books') }}"><i class="bi bi-book"></i>만화책 관리</a>
+      <a href="{{ url_for('admin.reservations') }}"><i class="bi bi-calendar2-check"></i>예약 관리</a>
+      <a href="{{ url_for('admin.operations') }}"><i class="bi bi-box-seam"></i>대여 운영</a>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span> 학교 대여 운영</div>
+  </aside>
+  <section class="admin-main">
+    <div class="dashboard-intro"><div><div class="eyebrow">ADMINISTRATION</div><h1>대시보드</h1><p>온라인 신청부터 현장 수령·반납까지 운영합니다.</p></div><a class="btn btn-primary" href="{{ url_for('admin.operations') }}">대여 운영 열기</a></div>
+    <div class="notice-strip"><i class="bi bi-info-circle"></i><div><strong>승인과 실제 대여는 별도 단계입니다.</strong><span>예약을 승인하면 재고가 확보되고, 학생이 현장에서 간식 교환 후 수령할 때 대여가 시작됩니다.</span></div></div>
+    <div class="row g-3 mt-1">
+      {% for key, label, icon in [('students','전체 학생','bi-people'),('books','전체 만화책','bi-book'),('pending','승인 대기','bi-hourglass-split'),('approved','수령 대기','bi-check2-circle'),('borrowed','대여 중','bi-arrow-left-right'),('returned','반납 완료','bi-arrow-return-left'),('snacks','간식 교환 완료','bi-cookie'),('logs','활동 로그','bi-list-check')] %}
+      <div class="col-6 col-xl-3"><div class="metric-card compact"><span>{{ label }}</span><strong>{{ stats[key] }}</strong><i class="bi {{ icon }} metric-icon"></i></div></div>
+      {% endfor %}
+    </div>
+    <div class="panel-card mt-4">
+      <div class="panel-header"><div><div class="eyebrow">OPERATIONS</div><h2>업무 바로가기</h2></div><span class="table-caption">로컬 데이터베이스</span></div>
+      <div class="quick-links">
+        <a href="{{ url_for('admin.reservations') }}"><i class="bi bi-calendar2-check"></i><span>온라인 신청 승인·거절</span><i class="bi bi-chevron-right ms-auto"></i></a>
+        <a href="{{ url_for('admin.operations') }}"><i class="bi bi-ticket-perforated"></i><span>간식 교환·대출증 발급·반납</span><i class="bi bi-chevron-right ms-auto"></i></a>
+        <a href="{{ url_for('admin.books') }}"><i class="bi bi-book"></i><span>도서 및 재고 관리</span><i class="bi bi-chevron-right ms-auto"></i></a>
+      </div>
+    </div>
+  </section>
+</div>
 {% endblock %}

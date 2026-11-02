@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="sidebar-label">BOOKMARU ADMIN</div><div class="sidebar-title">운영 센터</div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('admin.dashboard') }}">대시보드</a>
+      <a class="active" href="{{ url_for('admin.students') }}">학생 관리</a>
+      <a href="{{ url_for('admin.books') }}">만화책 관리</a>
+      <a href="{{ url_for('admin.reservations') }}">예약 관리</a>
+      <a href="{{ url_for('admin.operations') }}">대여 운영</a>
+    </nav>
+  </aside>
+  <section class="admin-main">
+    <div class="dashboard-intro">
+      <div><div class="eyebrow">ADMINISTRATION / STUDENTS</div><h1>학생 관리</h1><p>계정 아이디 조회, 비밀번호 초기화와 학생 비활성화를 처리합니다.</p></div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}{% if issued_code and category == 'success' %}<br><strong>가입 코드: {{ issued_code }}</strong>{% endif %}</div>
+    {% endfor %}{% endwith %}
+    {% if reset_password %}
+      <div class="alert alert-warning">
+        <strong>{{ reset_student.name }} 학생의 임시 비밀번호</strong>
+        <code class="d-block fs-5 my-2">{{ reset_password }}</code>
+        이 비밀번호는 지금 한 번만 표시됩니다. 학생에게 안전하게 전달하세요. 기존 로그인 세션은 모두 만료됩니다.
+      </div>
+    {% endif %}
+
+    <div class="panel-card mb-4">
+      <h2>학생 등록</h2>
+      <form method="post" class="row g-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-3"><input class="form-control" name="name" placeholder="이름" required></div>
+        <div class="col-md-2"><input class="form-control" name="grade" placeholder="학년" required></div>
+        <div class="col-md-2"><input class="form-control" name="class_name" placeholder="반" required></div>
+        <div class="col-md-3"><input class="form-control" name="internal_id" placeholder="내부 ID" required></div>
+        <div class="col-md-2"><button class="btn btn-primary w-100">등록</button></div>
+      </form>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-header"><div><h2>학생 명부</h2><p class="text-muted mb-0">삭제 대신 비활성화하여 대출·이용 이력을 보존합니다.</p></div><span class="table-caption">{{ students|length }}명</span></div>
+      <form method="get" class="row g-2 mb-3">
+        <div class="col"><label class="visually-hidden" for="student-search">학생 검색</label><input id="student-search" class="form-control" type="search" name="q" value="{{ query or '' }}" placeholder="이름, 학년/반, 내부 ID 또는 로그인 아이디"></div>
+        <div class="col-auto"><button class="btn btn-outline-primary">검색</button>{% if query %} <a class="btn btn-outline-secondary" href="{{ url_for('admin.students') }}">초기화</a>{% endif %}</div>
+      </form>
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>이름</th><th>학년/반</th><th>내부 ID</th><th>로그인 아이디</th><th>상태</th><th>계정 관리</th></tr></thead>
+          <tbody>
+          {% for student in students %}
+            <tr>
+              <td>{{ student.name }}</td>
+              <td>{{ student.grade }} / {{ student.class_name }}</td>
+              <td>{{ student.internal_id }}</td>
+              <td>{% if student.user %}{{ student.user.username }}{% else %}<span class="text-muted">미가입</span>{% endif %}</td>
+              <td>{% if not student.is_active %}<span class="badge text-bg-secondary">비활성</span>{% elif student.user %}<span class="badge text-bg-success">가입 완료</span>{% else %}<span class="badge text-bg-warning">가입 대기</span>{% endif %}</td>
+              <td class="text-nowrap">
+                {% if student.is_active %}
+                  {% if student.user %}
+                    <form method="post" action="{{ url_for('admin.reset_student_password', student_id=student.id, q=query) }}" class="d-inline" onsubmit="return confirm('이 학생의 비밀번호를 초기화할까요? 기존 비밀번호와 로그인 세션은 사용할 수 없게 됩니다.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn btn-sm btn-outline-primary">비밀번호 초기화</button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="{{ url_for('admin.reissue_invite', student_id=student.id, q=query) }}" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn btn-sm btn-outline-primary">가입 코드 발급</button>
+                    </form>
+                  {% endif %}
+                  <form method="post" action="{{ url_for('admin.deactivate_student', student_id=student.id, q=query) }}" class="d-inline" onsubmit="return confirm('학생을 비활성화할까요? 로그인과 미처리 신청을 막고 이력은 보존합니다.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-outline-danger">학생 비활성화</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('admin.reactivate_student', student_id=student.id, q=query) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-outline-success">학생 복구</button>
+                  </form>
+                  {% if not student.user %}
+                    <form method="post" action="{{ url_for('admin.reissue_invite', student_id=student.id, q=query) }}" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn btn-sm btn-outline-primary" disabled title="먼저 학생을 복구하세요">가입 코드 발급</button>
+                    </form>
+                  {% endif %}
+                {% endif %}
+                {% if student.id in students_with_history %}
+                  <span class="d-inline-block" title="신청 또는 대출 기록이 있어 영구 삭제할 수 없습니다. 비활성화만 가능합니다.">
+                    <button class="btn btn-sm btn-outline-danger" type="button" disabled>기록 보존으로 삭제 불가</button>
+                  </span>
+                {% else %}
+                  <form method="post" action="{{ url_for('admin.delete_student', student_id=student.id, q=query) }}" class="d-inline" onsubmit="return confirm('{{ student.name }} 학생을 영구 삭제할까요? 로그인 계정과 미사용 초대코드도 함께 삭제되며, 이 작업은 되돌릴 수 없습니다.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-danger">영구 삭제</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6">등록된 학생이 없습니다.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

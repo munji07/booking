@@ -1,39 +1,52 @@
 # 책마루 (Bookmaru)
 
-학생이 만화책을 찾고 예약하며, 관리자가 대여 흐름을 운영하는 Flask 기반 웹 애플리케이션입니다. 현재 PHASE 1에서는 운영 기능을 연결할 수 있는 애플리케이션 골격, 핵심 DB 모델, 공통 화면을 제공합니다.
+학생이 만화책을 온라인으로 신청하고, 학교 담당자가 간식 교환·대출증 발급·반납을 처리하는 Flask 기반 웹 애플리케이션입니다.
 
-## PHASE 1에서 준비된 것
+## 주요 기능
 
-- Flask 앱 팩토리와 `main`, `student`, `admin` Blueprint
-- 환경변수 기반 설정: 운영 PostgreSQL / 로컬 SQLite
-- Flask-SQLAlchemy, Flask-Login, Flask-WTF, Flask-Migrate 연결
-- User, Student, InviteCode, Book, Reservation, Loan, Locker, PaperTicket, SnackExchange, SystemSetting, ActivityLog 모델
-- UTC 저장과 `Asia/Seoul` 표시 유틸리티
-- 한국어 공통 레이아웃, 학생 카드형 화면, 관리자 사이드바·테이블 화면
-- 실제 DB 집계 기반의 빈 상태 화면 및 `/health` 확인 엔드포인트
+- 학생 가입 코드, 로그인 및 개인별 신청·대여 기록
+- 관리자 학생 명부에서 로그인 아이디 조회, 임시 비밀번호 초기화, 비활성화·복구
+- 도서 검색, 온라인 신청, 관리자 승인과 재고 확보
+- 도서 제목·회차 입력, 선택 설명·이미지 등록 (신규 도서는 기본 1권)
+- 학교 현장 수령 때 1,000원 이상 간식 1개 확인 및 수령·반납 교시가 포함된 대출증 발급
+- 도서별 온라인 신청 순번, 선착순 처리 및 인쇄용 대기 순번표
+- 예약 없이 방문한 학생의 즉시 대여와 반납 처리
+- 로컬 SQLite 데이터베이스 (`instance/bookmaru.sqlite`)
 
 ## 로컬 실행
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-flask --app run.py init-db
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python -m flask --app run.py init-db
 python run.py
 ```
 
-브라우저에서 `http://127.0.0.1:3000`을 엽니다. 로컬 기본 DB는 `instance/bookmaru.sqlite`입니다. 운영 PostgreSQL을 사용할 때는 `.env`의 `DATABASE_URL`을 `postgresql://...` 형식으로 지정하면 psycopg 연결 URL로 정규화됩니다.
+브라우저에서 `http://127.0.0.1:3000`을 엽니다. 데이터는 `instance/bookmaru.sqlite`에 저장되며, `DATABASE_URL` 등 외부에서 주입된 DB 환경변수는 사용하지 않습니다. 기존 데이터베이스에 마이그레이션을 적용하려면 `python -m flask --app run.py db upgrade`를 실행합니다. 새 로컬 데이터베이스에서 빠르게 시작하려면 `python -m flask --app run.py init-db`를 실행합니다.
 
 ## 마이그레이션
 
 저장소에 초기 마이그레이션 이력이 포함되어 있으므로, 새 환경에서는 `init-db` 대신 다음 명령으로 스키마를 적용할 수 있습니다.
 
 ```bash
-flask --app run.py db upgrade
+python -m flask --app run.py db upgrade
 ```
 
-스키마 변경은 `db migrate`로 생성된 이력을 검토한 뒤 `db upgrade`로 적용합니다. `flask --app run.py init-db`는 마이그레이션을 사용하지 않는 로컬 빠른 초기 확인용이므로 두 초기화 방식을 같은 DB에 연달아 실행하지 않습니다.
+스키마 변경은 `python -m flask --app run.py db migrate`로 생성된 이력을 검토한 뒤 `python -m flask --app run.py db upgrade`로 적용합니다. `python -m flask --app run.py init-db`는 마이그레이션을 사용하지 않는 로컬 빠른 초기 확인용이므로 두 초기화 방식을 같은 DB에 연달아 실행하지 않습니다.
+
+## 학교 대여 흐름
+
+1. 학생은 `/student/books`에서 도서를 신청합니다. 재고가 없거나 다른 학생이 대출 중일 때도 신청이 접수되며, 도서마다 고정 순번을 받습니다. 취소된 번호는 다시 사용하지 않습니다.
+2. 관리자는 `/admin/reservations`의 인쇄용 순번표를 이용해 신청 순서를 확인하고, 해당 도서의 가장 앞선 대기 신청부터 승인합니다. 승인은 수령 대기 재고로 잡히며, 책의 현장 재고는 실제 대출 때 차감됩니다.
+3. 담당자는 `/admin/operations`에서 승인된 학생의 수령을 처리하거나, 현장 즉시 대여를 등록합니다. 실제 대여 시 재고가 차감되며, 반납하면 복구됩니다. 학생 명부에 등록되어 있으면 계정 가입 전 학생도 현장 대여가 가능합니다.
+4. 대출증을 발급하려면 1,000원 이상 간식 1개를 실제로 확인하고 간식 가격, 수령 교시, 반납 교시를 입력합니다. 대출은 같은 날 수령 교시 이후 최대 3교시까지이며, 발급한 대출증은 대여 운영 화면에서 인쇄할 수 있습니다.
+5. 반납 때 `/admin/operations`의 현재 대여 목록에서 반납 처리합니다. 반납이 완료되면 재고가 다시 대여 가능 수량에 포함됩니다.
+
+학생은 로그인 후 `/student/`와 `/student/history`에서 신청 상태와 대출증 정보를 확인하고, 승인 대기·수령 대기 신청을 취소할 수 있습니다.
+
+관리자는 `/admin/students`에서 이름·학년/반·내부 ID·로그인 아이디로 학생을 검색할 수 있습니다. 비밀번호 초기화 후 표시되는 임시 비밀번호는 학생에게 안전하게 전달하세요. 학생 제거는 대출·신청 기록이 없을 때만 영구 삭제할 수 있습니다. 기록이 있으면 삭제가 막히며, 비활성화로 전환해 이력을 보존합니다. 비활성화 때 미처리 예약은 취소하고 미사용 가입 코드를 정리합니다. 이미 대여 중인 도서는 반납 처리할 때까지 운영 화면에 남습니다. 학생 본인은 내 계정에서 현재 비밀번호를 확인한 후 아이디(3~80자) 또는 비밀번호(8자 이상)를 변경할 수 있습니다.
 
 ## 확인 방법
 
@@ -42,6 +55,9 @@ flask --app run.py db upgrade
 - 책 데이터가 없는 최초 상태에서 “아직 등록된 책이 없습니다” 빈 상태가 표시되는지 확인합니다.
 - 고정 관리자 계정이나 운영 비밀번호는 이 프로젝트에 포함하지 않습니다.
 
-## 다음 단계
+## 운영 전 확인
 
-사용자 확인 후 PHASE 2에서 관리자 로그인, 학생 등록, `secrets` 기반 1회용 가입 코드, 학생 회원가입·로그인을 구현합니다. 이후 각 PHASE 완료 시 실제 DB 연결 기능과 보안·권한 테스트를 추가합니다.
+- 담당자는 실제 간식 1개와 가격(1,000원 이상), 수령·반납 교시를 확인한 뒤 대출증을 발급합니다. 순번표는 `/admin/reservations`에서 인쇄할 수 있습니다.
+- 서버 PC의 `instance/bookmaru.sqlite`를 정기적으로 백업합니다. 같은 SQLite 파일을 여러 PC에서 직접 공유하지 말고, 학생과 담당자는 같은 서버 주소를 사용합니다.
+- 수령 대기 신청은 자동 만료되지 않습니다. 학생이 오지 않으면 담당자가 예약 관리에서 승인을 취소해 수령 대기 수량을 풀어 주세요.
+- 새 버전을 배포할 때는 먼저 SQLite 파일을 백업한 다음 `python -m flask --app run.py db upgrade`를 실행합니다.

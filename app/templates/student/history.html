@@ -1,4 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container-fluid page-shell section-space narrow-content"><div class="dashboard-intro"><div><div class="eyebrow">MY HISTORY</div><h1>나의 이용 기록</h1><p>예약, 대여, 반납 흐름이 이곳에 쌓입니다.</p></div></div><div class="panel-card panel-card-tall"><div class="empty-state"><div class="empty-icon"><i class="bi bi-clock-history"></i></div><h2>표시할 기록이 없습니다</h2><p>학생 로그인 기능이 연결되면 나의 예약과 대여 기록을 안전하게 조회할 수 있습니다.</p><a class="btn btn-outline-primary" href="{{ url_for('student.books') }}">책 둘러보기</a></div></div></div>
+<div class="container-fluid page-shell section-space narrow-content">
+  <div class="dashboard-intro"><div><div class="eyebrow">MY HISTORY</div><h1>나의 신청·대여 기록</h1><p>온라인 신청과 현장 대여 내역, 대출증 정보를 확인하세요.</p></div></div>
+  <div class="panel-card">
+    {% if reservations %}
+    <div class="table-responsive"><table class="table align-middle">
+      <thead><tr><th>신청일</th><th>도서</th><th>구분·상태</th><th>대출증·반납 정보</th></tr></thead>
+      <tbody>
+      {% for item in reservations %}
+        <tr>
+          <td>{{ format_kst(item.requested_at) }}</td>
+          <td>{{ item.book.title }}{% if item.book.episode %} · {{ item.book.episode }}{% endif %}</td>
+          <td>{% if item.source == 'walk_in' %}현장 대여{% else %}온라인 신청{% endif %}<br>{% if item.status == 'pending' %}승인 대기{% elif item.status == 'approved' %}수령 대기{% elif item.status == 'issued' %}대여 중{% elif item.status == 'returned' %}반납 완료{% elif item.status == 'rejected' %}신청 거절{% elif item.status == 'cancelled' %}취소{% else %}{{ item.status }}{% endif %}</td>
+          <td>{% if item.source == 'online' and item.queue_number %}도서 순번 {{ item.queue_number }}번<br>{% endif %}{% if item.paper_ticket %}대출증 {{ item.paper_ticket.ticket_number }}<br><small>수령 {{ item.paper_ticket.receive_period or '-' }}교시 · 반납 {{ item.paper_ticket.return_date or '-' }} {{ item.paper_ticket.return_period or '-' }}교시</small>{% else %}-{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon"><i class="bi bi-clock-history"></i></div><h2>표시할 기록이 없습니다</h2><p>신청한 책이나 현장에서 빌린 책의 기록이 이곳에 표시됩니다.</p><a class="btn btn-outline-primary" href="{{ url_for('student.books') }}">책 둘러보기</a></div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

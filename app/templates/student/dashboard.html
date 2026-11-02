@@ -1,16 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container-fluid page-shell section-space">
-  <div class="dashboard-intro"><div><div class="eyebrow">STUDENT SPACE</div><h1>학생 공간</h1><p>나의 예약과 대여 흐름을 한눈에 확인하는 곳입니다.</p></div><span class="phase-badge"><span class="status-dot"></span> 인증 연결 전</span></div>
-  <div class="notice-strip"><i class="bi bi-info-circle"></i><div><strong>학생 계정 기능은 다음 단계에서 열립니다.</strong><span>현재는 화면 구조와 데이터 연결 기반을 확인할 수 있습니다.</span></div></div>
+  <div class="dashboard-intro"><div><div class="eyebrow">STUDENT SPACE</div><h1>학생 공간</h1><p>온라인 신청부터 현장 수령과 반납까지 확인할 수 있습니다.</p></div><span class="phase-badge"><span class="status-dot"></span> 학생 계정</span></div>
+  <div class="notice-strip"><i class="bi bi-info-circle"></i><div><strong>온라인 신청은 관리자가 승인한 뒤 수령할 수 있습니다.</strong><span>현장에서 간식 교환 후 대출증을 받고, 대출증의 날짜와 교시에 반납해 주세요.</span></div></div>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert-{{ category }} mt-3">{{ message }}</div>{% endfor %}{% endwith %}
   <div class="row g-3 mt-1">
     <div class="col-md-4"><div class="metric-card"><span>예약 가능한 책</span><strong>{{ available_books }}</strong><small>등록된 운영 데이터 기준</small><i class="bi bi-book metric-icon"></i></div></div>
     <div class="col-md-4"><div class="metric-card"><span>전체 예약</span><strong>{{ reservation_count }}</strong><small>모든 상태 포함</small><i class="bi bi-calendar2-check metric-icon"></i></div></div>
     <div class="col-md-4"><div class="metric-card"><span>대여 중</span><strong>{{ loan_count }}</strong><small>현재 borrowed 상태</small><i class="bi bi-arrow-left-right metric-icon"></i></div></div>
   </div>
   <div class="row g-4 mt-2">
-    <div class="col-lg-8"><div class="panel-card panel-card-tall"><div class="panel-header"><div><div class="eyebrow">MY RESERVATIONS</div><h2>나의 예약 현황</h2></div><a href="{{ url_for('student.books') }}" class="text-link">책 찾기 <i class="bi bi-arrow-up-right"></i></a></div><div class="empty-state"><div class="empty-icon"><i class="bi bi-journal-bookmark"></i></div><h3>아직 예약 내역이 없습니다</h3><p>새로운 책을 찾아 나만의 읽기 목록을 시작해보세요.</p><a class="btn btn-outline-primary" href="{{ url_for('student.books') }}">책 둘러보기</a></div></div></div>
-    <div class="col-lg-4"><div class="panel-card panel-card-tall"><div class="panel-header"><div><div class="eyebrow">QUICK MENU</div><h2>바로가기</h2></div></div><div class="quick-links"><a href="{{ url_for('student.books') }}"><i class="bi bi-grid-3x3-gap"></i><span>만화책 목록</span><i class="bi bi-chevron-right ms-auto"></i></a><a href="{{ url_for('student.history') }}"><i class="bi bi-clock-history"></i><span>대여 기록</span><i class="bi bi-chevron-right ms-auto"></i></a><div class="quick-link-disabled"><i class="bi bi-ticket-perforated"></i><span>내 대여증 <small>인증 후 이용</small></span></div></div></div></div>
+    <div class="col-lg-8"><div class="panel-card panel-card-tall"><div class="panel-header"><div><div class="eyebrow">MY ACTIVITY</div><h2>신청·대여 현황</h2></div><a href="{{ url_for('student.books') }}" class="text-link">책 찾기 <i class="bi bi-arrow-up-right"></i></a></div>
+      {% if reservations %}
+      <div class="table-responsive"><table class="table align-middle"><thead><tr><th>도서</th><th>상태</th><th>대출증 / 반납</th><th></th></tr></thead><tbody>
+      {% for item in reservations %}
+      <tr><td>{{ item.book.title }}{% if item.book.episode %} · {{ item.book.episode }}{% endif %}<br><small>{{ format_kst(item.requested_at) }}</small></td>
+        <td>{% if item.status == 'pending' %}승인 대기{% elif item.status == 'approved' %}수령 대기{% elif item.status == 'issued' %}대여 중{% elif item.status == 'returned' %}반납 완료{% elif item.status == 'rejected' %}신청 거절{% elif item.status == 'cancelled' %}취소{% else %}{{ item.status }}{% endif %}{% if item.source == 'online' and item.queue_number %}<br><small>도서 순번 {{ item.queue_number }}번</small>{% endif %}</td>
+        <td>{% if item.paper_ticket %}대출증 {{ item.paper_ticket.ticket_number }}<br><small>수령 {{ item.paper_ticket.receive_period or '-' }}교시 · 반납 {{ item.paper_ticket.return_date or '-' }} {{ item.paper_ticket.return_period or '-' }}교시</small>{% elif item.status == 'approved' %}대여 운영 창구에서 수령{% else %}-{% endif %}</td>
+        <td>{% if item.status in ['pending', 'approved'] %}<form method="post" action="{{ url_for('student.cancel_reservation', reservation_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">취소</button></form>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody></table></div>
+      {% else %}
+      <div class="empty-state"><div class="empty-icon"><i class="bi bi-journal-bookmark"></i></div><h3>아직 신청 내역이 없습니다</h3><p>책을 둘러보고 읽고 싶은 책을 신청해 보세요.</p><a class="btn btn-outline-primary" href="{{ url_for('student.books') }}">책 둘러보기</a></div>
+      {% endif %}
+    </div></div>
+    <div class="col-lg-4"><div class="panel-card panel-card-tall"><div class="panel-header"><div><div class="eyebrow">QUICK MENU</div><h2>바로가기</h2></div></div><div class="quick-links"><a href="{{ url_for('student.books') }}"><i class="bi bi-grid-3x3-gap"></i><span>만화책 목록</span><i class="bi bi-chevron-right ms-auto"></i></a><a href="{{ url_for('student.history') }}"><i class="bi bi-clock-history"></i><span>신청·대여 기록</span><i class="bi bi-chevron-right ms-auto"></i></a></div></div></div>
   </div>
 </div>
 {% endblock %}

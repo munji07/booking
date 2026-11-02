@@ -11,16 +11,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 INSTANCE_DIR = BASE_DIR / "instance"
 
 
-def _database_url():
-    # Explicit project setting wins over a hosting platform's injected URL.
-    value = os.getenv("BOOKMARU_DATABASE_URL") or os.getenv("DATABASE_URL", "sqlite:///bookmaru.sqlite")
-    if value.startswith("postgres://"):
-        return value.replace("postgres://", "postgresql+psycopg://", 1)
-    if value.startswith("postgresql://") and "+psycopg" not in value:
-        return value.replace("postgresql://", "postgresql+psycopg://", 1)
-    return value
-
-
 def _as_bool(value, default=False):
     if value is None:
         return default
@@ -29,7 +19,7 @@ def _as_bool(value, default=False):
 
 class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
-    SQLALCHEMY_DATABASE_URI = _database_url()
+    SQLALCHEMY_DATABASE_URI = "sqlite:///bookmaru.sqlite"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     WTF_CSRF_ENABLED = True

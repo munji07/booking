@@ -1,5 +1,6 @@
 """책마루 Flask application package."""
 from pathlib import Path
+import click
 
 from flask import Flask, render_template
 from flask_wtf.csrf import CSRFError
@@ -7,13 +8,19 @@ from flask_wtf.csrf import CSRFError
 from .config import get_config_class
 from .extensions import csrf, db, login_manager, migrate
 from .models import User
+from werkzeug.security import generate_password_hash
 from .time_utils import format_kst
 
 
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        return db.session.get(User, int(user_id))
+        raw_id, separator, raw_version = user_id.partition(":")
+        user = db.session.get(User, int(raw_id))
+        version = int(raw_version) if separator else 1
+        if user and user.auth_version == version:
+            return user
+        return None
     except (TypeError, ValueError):
         return None
 
@@ -28,6 +35,11 @@ def create_app(config_class=None):
 
     db.init_app(app)
     login_manager.init_app(app)
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        from flask import redirect, request, url_for
+        endpoint = "admin.login" if request.path.startswith("/admin") else "student.login"
+        return redirect(url_for(endpoint, next=request.full_path))
     csrf.init_app(app)
     migrate.init_app(app, db)
 
@@ -57,5 +69,19 @@ def create_app(config_class=None):
         with app.app_context():
             db.create_all()
         print("책마루 데이터베이스 테이블을 준비했습니다.")
+
+    @app.cli.command("create-admin")
+    @click.option("--username", prompt="Admin username")
+    @click.option("--password", prompt=True, hide_input=True, confirmation_prompt=True)
+    def create_admin_command(username, password):
+        """Create an administrator account."""
+        with app.app_context():
+            username = username.strip()
+            if User.query.filter_by(username=username).first():
+                raise click.ClickException("Username already exists.")
+            user = User(username=username, password_hash=generate_password_hash(password), role="admin")
+            db.session.add(user)
+            db.session.commit()
+        click.echo("Administrator created.")
 
     return app

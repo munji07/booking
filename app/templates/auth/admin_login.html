@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container page-shell section-space narrow-content"><div class="panel-card auth-card"><div class="eyebrow">BOOKMARU / ADMIN</div><h1>관리자 로그인</h1>{% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label">아이디</label><input class="form-control mb-3" name="username" required autofocus><label class="form-label">비밀번호</label><input class="form-control mb-3" type="password" name="password" required><button class="btn btn-primary w-100">로그인</button></form></div></div>
+{% endblock %}

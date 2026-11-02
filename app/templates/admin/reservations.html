@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  @media print {
+    .site-nav, .site-footer, .admin-sidebar, .reservation-history, .print-queue-button { display: none !important; }
+    .queue-print { border: 0 !important; box-shadow: none !important; }
+  }
+</style>
+<div class="admin-layout">
+  <aside class="admin-sidebar"><div class="sidebar-label">BOOKMARU ADMIN</div><div class="sidebar-title">운영 센터</div><nav class="sidebar-nav"><a href="{{ url_for('admin.dashboard') }}">대시보드</a><a href="{{ url_for('admin.students') }}">학생 관리</a><a href="{{ url_for('admin.books') }}">만화책 관리</a><a class="active" href="{{ url_for('admin.reservations') }}">예약 관리</a><a href="{{ url_for('admin.operations') }}">대여 운영</a></nav></aside>
+  <section class="admin-main">
+    <div class="dashboard-intro"><div><div class="eyebrow">ADMINISTRATION / RESERVATIONS</div><h1>예약 관리</h1><p>승인하면 재고가 확보됩니다. 실제 대여는 대여 운영에서 학생이 수령할 때 처리하세요.</p></div></div>
+    {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}
+    <div class="panel-card queue-print mb-4">
+      <div class="panel-header"><div><div class="eyebrow">PAPER QUEUE</div><h2>도서별 대기 순번표</h2></div><button class="btn btn-outline-primary print-queue-button" type="button" onclick="window.print()">순번표 인쇄</button></div>
+      <p class="text-muted">같은 도서는 순번이 빠른 신청부터 처리합니다. 취소된 번호는 다시 사용하지 않습니다.</p>
+      <div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>순번</th><th>도서</th><th>학생</th><th>상태</th><th>신청일</th></tr></thead>
+        <tbody>
+        {% for item in queue_reservations %}
+          <tr><td><strong class="fs-4">{{ item.queue_number or '-' }}</strong></td><td>{{ item.book.title }}{% if item.book.episode %} · {{ item.book.episode }}{% endif %}</td><td>{{ item.student.name if item.student else '-' }}{% if item.student %}<br><small>{{ item.student.grade }}학년 {{ item.student.class_name }}반 · {{ item.student.internal_id }}</small>{% endif %}</td><td>{% if item.status == 'pending' %}승인 대기{% else %}수령 대기{% endif %}</td><td>{{ format_kst(item.requested_at) }}</td></tr>
+        {% else %}
+          <tr><td colspan="5">현재 대기 중인 온라인 신청이 없습니다.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="panel-card reservation-history"><div class="table-responsive"><table class="table align-middle">
+      <thead><tr><th>학생</th><th>도서 / 순번</th><th>신청일</th><th>상태</th><th>처리</th></tr></thead>
+      <tbody>
+      {% for item in reservations %}
+        <tr>
+          <td>{{ item.student.name if item.student else (item.user.username if item.user else '-') }}{% if item.student %}<br><small>{{ item.student.grade }}학년 {{ item.student.class_name }}반 · {{ item.student.internal_id }}</small>{% endif %}</td>
+          <td>{{ item.book.title }}{% if item.book.episode %} · {{ item.book.episode }}{% endif %}<br><small>{% if item.source == 'walk_in' %}현장 대여{% else %}도서 순번 {{ item.queue_number or '-' }}번{% endif %}</small></td>
+          <td>{{ format_kst(item.requested_at) }}</td>
+          <td>{% if item.status == 'pending' %}승인 대기{% elif item.status == 'approved' %}수령 대기{% elif item.status == 'issued' %}대여 중{% elif item.status == 'returned' %}반납 완료{% elif item.status == 'rejected' %}거절{% elif item.status == 'cancelled' %}취소{% else %}{{ item.status }}{% endif %}</td>
+          <td>
+            {% if item.status == 'pending' %}
+              <form method="post" class="d-flex gap-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="reservation_id" value="{{ item.id }}"><button class="btn btn-sm btn-primary" name="action" value="approve">승인·수령 대기</button><button class="btn btn-sm btn-outline-secondary" name="action" value="reject">거절</button></form>
+            {% elif item.status == 'approved' %}
+              <a class="btn btn-sm btn-primary" href="{{ url_for('admin.operations') }}">현장 수령 처리</a>
+              <form method="post" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="reservation_id" value="{{ item.id }}"><button class="btn btn-sm btn-outline-secondary" name="action" value="cancel">승인 취소</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">신청 내역이 없습니다.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div></div>
+  </section>
+</div>
+{% endblock %}

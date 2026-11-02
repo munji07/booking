@@ -18,7 +18,11 @@ class User(UserMixin, TimestampMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="student", index=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    auth_version = db.Column(db.Integer, nullable=False, default=1)
     student = db.relationship("Student", back_populates="user", uselist=False)
+
+    def get_id(self):
+        return f"{self.id}:{self.auth_version}"
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -34,6 +38,7 @@ class Student(TimestampMixin, db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     user = db.relationship("User", back_populates="student")
+    reservations = db.relationship("Reservation", back_populates="student")
 
 
 class InviteCode(db.Model):
@@ -43,6 +48,7 @@ class InviteCode(db.Model):
     code_hash = db.Column(db.String(255), unique=True, nullable=False)
     expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
     used_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    revoked_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
     student = db.relationship("Student")
 
@@ -51,12 +57,14 @@ class Book(TimestampMixin, db.Model):
     __tablename__ = "books"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False, index=True)
+    episode = db.Column(db.String(40), nullable=False, default="", server_default="")
     author = db.Column(db.String(120), nullable=False)
     description = db.Column(db.Text, nullable=False, default="")
     cover_url = db.Column(db.String(500), nullable=True)
     category = db.Column(db.String(80), nullable=False, default="기타", index=True)
     total_stock = db.Column(db.Integer, nullable=False, default=1)
     available_stock = db.Column(db.Integer, nullable=False, default=1)
+    next_queue_number = db.Column(db.Integer, nullable=False, default=1)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     __table_args__ = (
         db.CheckConstraint("total_stock >= 0", name="ck_books_total_stock_nonnegative"),
@@ -67,27 +75,39 @@ class Book(TimestampMixin, db.Model):
 class Reservation(TimestampMixin, db.Model):
     __tablename__ = "reservations"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=True, index=True)
     book_id = db.Column(db.Integer, db.ForeignKey("books.id"), nullable=False, index=True)
+    source = db.Column(db.String(20), nullable=False, default="online", index=True)
     status = db.Column(db.String(20), nullable=False, default="pending", index=True)
     requested_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
     reviewed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     cancelled_at = db.Column(db.DateTime(timezone=True), nullable=True)
     note = db.Column(db.Text, nullable=True)
+    queue_number = db.Column(db.Integer, nullable=True)
+    __table_args__ = (
+        db.UniqueConstraint("book_id", "queue_number", name="uq_reservations_book_queue_number"),
+    )
     user = db.relationship("User")
+    student = db.relationship("Student", back_populates="reservations")
     book = db.relationship("Book")
+    loan = db.relationship("Loan", back_populates="reservation", uselist=False)
+    paper_ticket = db.relationship("PaperTicket", back_populates="reservation", uselist=False)
+    snack_exchange = db.relationship("SnackExchange", back_populates="reservation", uselist=False)
 
 
 class Loan(TimestampMixin, db.Model):
     __tablename__ = "loans"
     id = db.Column(db.Integer, primary_key=True)
     reservation_id = db.Column(db.Integer, db.ForeignKey("reservations.id"), unique=True, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=True, index=True)
     book_id = db.Column(db.Integer, db.ForeignKey("books.id"), nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default="borrowed", index=True)
     borrowed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     returned_at = db.Column(db.DateTime(timezone=True), nullable=True)
-    reservation = db.relationship("Reservation")
+    reservation = db.relationship("Reservation", back_populates="loan")
+    student = db.relationship("Student")
     book = db.relationship("Book")
 
 
@@ -106,10 +126,13 @@ class PaperTicket(db.Model):
     reservation_id = db.Column(db.Integer, db.ForeignKey("reservations.id"), unique=True, nullable=False)
     ticket_number = db.Column(db.String(40), unique=True, nullable=False)
     locker_id = db.Column(db.Integer, db.ForeignKey("lockers.id"), nullable=True)
+    receive_period = db.Column(db.Integer, nullable=True)
+    return_date = db.Column(db.Date, nullable=True)
+    return_period = db.Column(db.Integer, nullable=True)
     is_issued = db.Column(db.Boolean, nullable=False, default=False)
     issued_at = db.Column(db.DateTime(timezone=True), nullable=True)
     issued_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    reservation = db.relationship("Reservation")
+    reservation = db.relationship("Reservation", back_populates="paper_ticket")
     locker = db.relationship("Locker")
 
 
@@ -119,10 +142,17 @@ class SnackExchange(db.Model):
     reservation_id = db.Column(db.Integer, db.ForeignKey("reservations.id"), unique=True, nullable=False)
     required_quantity = db.Column(db.Integer, nullable=False, default=1)
     submitted_quantity = db.Column(db.Integer, nullable=False, default=0)
+    unit_price = db.Column(db.Integer, nullable=True)
     status = db.Column(db.String(20), nullable=False, default="waiting", index=True)
     checked_at = db.Column(db.DateTime(timezone=True), nullable=True)
     completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
-    reservation = db.relationship("Reservation")
+    __table_args__ = (
+        db.CheckConstraint(
+            "unit_price IS NULL OR unit_price >= 1000",
+            name="ck_snack_exchanges_unit_price_minimum",
+        ),
+    )
+    reservation = db.relationship("Reservation", back_populates="snack_exchange")
 
 
 class SystemSetting(db.Model):

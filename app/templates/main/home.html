@@ -9,9 +9,9 @@
         <p class="hero-lead">책마루는 학생의 책 선택부터 관리자의 대여 운영까지, 학교 안 작은 서가의 흐름을 한곳에 담습니다.</p>
         <div class="hero-actions">
           <a class="btn btn-primary btn-lg" href="{{ url_for('student.books') }}">책 둘러보기 <i class="bi bi-arrow-up-right"></i></a>
-          <a class="btn btn-quiet btn-lg" href="{{ url_for('admin.dashboard') }}">관리자 센터 보기</a>
+          <a class="btn btn-quiet btn-lg" href="{{ url_for('main.student_access') }}">초대코드로 가입하기 <i class="bi bi-arrow-right"></i></a>
         </div>
-        <div class="hero-note"><i class="bi bi-info-circle"></i> 현재는 PHASE 1 기반 화면입니다. 인증과 실제 운영 기능은 다음 단계에서 연결됩니다.</div>
+        <div class="hero-note"><i class="bi bi-info-circle"></i> 신청 후 관리자 승인과 현장 간식 교환을 거쳐 대여증을 발급합니다.</div>
       </div>
       <div class="hero-visual" aria-label="책마루 서비스 안내">
         <div class="shelf-card shelf-card-back"></div>
@@ -35,8 +35,8 @@
   <div class="section-heading"><div><div class="eyebrow">SERVICE FLOW</div><h2>서가의 흐름을 간단하게</h2></div><span class="section-count">01 — 03</span></div>
   <div class="row g-3">
     <div class="col-md-4"><div class="feature-card"><div class="feature-number">01</div><i class="bi bi-search feature-icon"></i><h3>찾아보기</h3><p>읽고 싶은 만화책을 제목과 작가, 카테고리로 편하게 찾아보세요.</p></div></div>
-    <div class="col-md-4"><div class="feature-card"><div class="feature-number">02</div><i class="bi bi-calendar2-check feature-icon"></i><h3>예약하기</h3><p>원하는 책을 예약하면 관리자가 재고와 수령 준비를 확인합니다.</p></div></div>
-    <div class="col-md-4"><div class="feature-card"><div class="feature-number">03</div><i class="bi bi-ticket-perforated feature-icon"></i><h3>수령하기</h3><p>종이 대여증과 사물함 안내를 확인하고 준비된 책을 받아요.</p></div></div>
+    <div class="col-md-4"><div class="feature-card"><div class="feature-number">02</div><i class="bi bi-calendar2-check feature-icon"></i><h3>신청·승인</h3><p>원하는 책을 신청하면 관리자가 재고를 확인해 수령 가능 여부를 알려줍니다.</p></div></div>
+    <div class="col-md-4"><div class="feature-card"><div class="feature-number">03</div><i class="bi bi-ticket-perforated feature-icon"></i><h3>교환·대여</h3><p>학교에서 간식을 내고 대출증을 받아요. 예약 없이 현장에서 바로 빌릴 수도 있어요.</p></div></div>
   </div>
 </section>
 {% endblock %}
