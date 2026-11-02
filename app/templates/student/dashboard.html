@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid page-shell section-space">
+  <div class="dashboard-intro"><div><div class="eyebrow">STUDENT SPACE</div><h1>학생 공간</h1><p>나의 예약과 대여 흐름을 한눈에 확인하는 곳입니다.</p></div><span class="phase-badge"><span class="status-dot"></span> 인증 연결 전</span></div>
+  <div class="notice-strip"><i class="bi bi-info-circle"></i><div><strong>학생 계정 기능은 다음 단계에서 열립니다.</strong><span>현재는 화면 구조와 데이터 연결 기반을 확인할 수 있습니다.</span></div></div>
+  <div class="row g-3 mt-1">
+    <div class="col-md-4"><div class="metric-card"><span>예약 가능한 책</span><strong>{{ available_books }}</strong><small>등록된 운영 데이터 기준</small><i class="bi bi-book metric-icon"></i></div></div>
+    <div class="col-md-4"><div class="metric-card"><span>전체 예약</span><strong>{{ reservation_count }}</strong><small>모든 상태 포함</small><i class="bi bi-calendar2-check metric-icon"></i></div></div>
+    <div class="col-md-4"><div class="metric-card"><span>대여 중</span><strong>{{ loan_count }}</strong><small>현재 borrowed 상태</small><i class="bi bi-arrow-left-right metric-icon"></i></div></div>
+  </div>
+  <div class="row g-4 mt-2">
+    <div class="col-lg-8"><div class="panel-card panel-card-tall"><div class="panel-header"><div><div class="eyebrow">MY RESERVATIONS</div><h2>나의 예약 현황</h2></div><a href="{{ url_for('student.books') }}" class="text-link">책 찾기 <i class="bi bi-arrow-up-right"></i></a></div><div class="empty-state"><div class="empty-icon"><i class="bi bi-journal-bookmark"></i></div><h3>아직 예약 내역이 없습니다</h3><p>새로운 책을 찾아 나만의 읽기 목록을 시작해보세요.</p><a class="btn btn-outline-primary" href="{{ url_for('student.books') }}">책 둘러보기</a></div></div></div>
+    <div class="col-lg-4"><div class="panel-card panel-card-tall"><div class="panel-header"><div><div class="eyebrow">QUICK MENU</div><h2>바로가기</h2></div></div><div class="quick-links"><a href="{{ url_for('student.books') }}"><i class="bi bi-grid-3x3-gap"></i><span>만화책 목록</span><i class="bi bi-chevron-right ms-auto"></i></a><a href="{{ url_for('student.history') }}"><i class="bi bi-clock-history"></i><span>대여 기록</span><i class="bi bi-chevron-right ms-auto"></i></a><div class="quick-link-disabled"><i class="bi bi-ticket-perforated"></i><span>내 대여증 <small>인증 후 이용</small></span></div></div></div></div>
+  </div>
+</div>
+{% endblock %}

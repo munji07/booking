@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero-section">
+  <div class="container-fluid page-shell">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-line"></span> 만화책 예약·대여 관리</div>
+        <h1>오늘 읽을 책을<br><em>골라보세요.</em></h1>
+        <p class="hero-lead">책마루는 학생의 책 선택부터 관리자의 대여 운영까지, 학교 안 작은 서가의 흐름을 한곳에 담습니다.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="{{ url_for('student.books') }}">책 둘러보기 <i class="bi bi-arrow-up-right"></i></a>
+          <a class="btn btn-quiet btn-lg" href="{{ url_for('admin.dashboard') }}">관리자 센터 보기</a>
+        </div>
+        <div class="hero-note"><i class="bi bi-info-circle"></i> 현재는 PHASE 1 기반 화면입니다. 인증과 실제 운영 기능은 다음 단계에서 연결됩니다.</div>
+      </div>
+      <div class="hero-visual" aria-label="책마루 서비스 안내">
+        <div class="shelf-card shelf-card-back"></div>
+        <div class="shelf-card shelf-card-front">
+          <div class="card-kicker">BOOKMARU / 01</div>
+          <div class="book-stack">
+            <span class="book book-blue">읽기의<br>즐거움</span>
+            <span class="book book-cream">우리들의<br>서가</span>
+            <span class="book book-navy">다음<br>페이지</span>
+          </div>
+          <div class="ticket-line"></div>
+          <div class="d-flex justify-content-between small text-muted"><span>대여 운영 노트</span><span>2026</span></div>
+        </div>
+        <div class="floating-note floating-note-top"><i class="bi bi-bookmark-heart"></i><span>차곡차곡<br><strong>기록되는 독서</strong></span></div>
+        <div class="floating-note floating-note-bottom"><span class="mini-dot"></span> 준비된 서가</div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="container-fluid page-shell section-space">
+  <div class="section-heading"><div><div class="eyebrow">SERVICE FLOW</div><h2>서가의 흐름을 간단하게</h2></div><span class="section-count">01 — 03</span></div>
+  <div class="row g-3">
+    <div class="col-md-4"><div class="feature-card"><div class="feature-number">01</div><i class="bi bi-search feature-icon"></i><h3>찾아보기</h3><p>읽고 싶은 만화책을 제목과 작가, 카테고리로 편하게 찾아보세요.</p></div></div>
+    <div class="col-md-4"><div class="feature-card"><div class="feature-number">02</div><i class="bi bi-calendar2-check feature-icon"></i><h3>예약하기</h3><p>원하는 책을 예약하면 관리자가 재고와 수령 준비를 확인합니다.</p></div></div>
+    <div class="col-md-4"><div class="feature-card"><div class="feature-number">03</div><i class="bi bi-ticket-perforated feature-icon"></i><h3>수령하기</h3><p>종이 대여증과 사물함 안내를 확인하고 준비된 책을 받아요.</p></div></div>
+  </div>
+</section>
+{% endblock %}

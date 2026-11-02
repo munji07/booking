@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid page-shell section-space">
+  <div class="dashboard-intro"><div><div class="eyebrow">BOOK CATALOG</div><h1>만화책 둘러보기</h1><p>읽고 싶은 책을 검색하고 카테고리별로 살펴보세요.</p></div><span class="result-count">{{ books|length }}권</span></div>
+  <form class="catalog-toolbar" method="get" action="{{ url_for('student.books') }}">
+    <div class="search-wrap"><i class="bi bi-search"></i><input name="q" value="{{ query }}" type="search" placeholder="제목이나 작가를 검색하세요" aria-label="책 검색"></div>
+    <select name="category" class="form-select category-select" aria-label="카테고리 필터"><option value="">모든 카테고리</option>{% for item in categories %}<option value="{{ item }}" {% if selected_category == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
+    <button class="btn btn-primary" type="submit">검색</button>
+  </form>
+  {% if books %}
+  <div class="row g-4 mt-1">{% for book in books %}<div class="col-sm-6 col-lg-4 col-xl-3"><article class="book-card"><div class="book-cover {% if loop.index % 3 == 0 %}cover-navy{% elif loop.index % 2 == 0 %}cover-cream{% else %}cover-blue{% endif %}">{% if book.cover_url %}<img src="{{ book.cover_url }}" alt="{{ book.title }} 표지">{% else %}<span>{{ book.title[:1] }}</span><small>BOOKMARU</small>{% endif %}</div><div class="book-card-body"><span class="book-category">{{ book.category }}</span><h2>{{ book.title }}</h2><p class="book-author">{{ book.author }}</p><p class="book-description">{{ book.description or "설명이 아직 등록되지 않았습니다." }}</p><div class="book-meta"><span class="availability-dot {% if book.available_stock > 0 %}is-available{% endif %}"></span>{% if book.available_stock > 0 %}대여 가능{% else %}대여 준비 중{% endif %}<span class="ms-auto">{{ book.available_stock }}/{{ book.total_stock }}</span></div></div></article></div>{% endfor %}</div>
+  {% else %}<div class="catalog-empty"><div class="empty-icon"><i class="bi bi-bookshelf"></i></div><h2>{% if query or selected_category %}조건에 맞는 책이 없습니다{% else %}아직 등록된 책이 없습니다{% endif %}</h2><p>{% if query or selected_category %}검색어나 카테고리 필터를 바꾸어 다시 시도해보세요.{% else %}관리자가 책을 등록하면 이곳에서 표지와 함께 만나볼 수 있어요.{% endif %}</p>{% if query or selected_category %}<a href="{{ url_for('student.books') }}" class="btn btn-outline-primary">필터 초기화</a>{% endif %}</div>{% endif %}
+</div>
+{% endblock %}
