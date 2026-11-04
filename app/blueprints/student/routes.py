@@ -10,6 +10,34 @@ from ...models import ActivityLog, Book, InviteCode, Loan, Reservation, User
 from ...time_utils import utc_now
 from . import student_bp
 
+
+def get_effective_available_stock(available_stock, approved_count=0):
+    return max(available_stock - approved_count, 0)
+
+
+def get_availability_state(available_stock, approved_count=0):
+    effective_stock = get_effective_available_stock(available_stock, approved_count)
+    if effective_stock > 0:
+        return "available"
+    if available_stock > 0:
+        return "reserved"
+    return "unavailable"
+
+
+def validate_reservation_periods(receive_period, return_period):
+    if receive_period is None or return_period is None:
+        raise ValueError("수령·반납 교시를 올바르게 입력하세요.")
+    if min(receive_period, return_period) < 1:
+        raise ValueError("수령·반납 교시를 올바르게 입력하세요.")
+    if max(receive_period, return_period) > 12:
+        raise ValueError("교시는 1교시부터 12교시 사이로 입력하세요.")
+    if return_period <= receive_period:
+        raise ValueError("반납 교시는 수령 교시 이후로 입력하세요.")
+    if return_period - receive_period > 3:
+        raise ValueError("대출은 수령 교시부터 최대 3교시까지만 가능합니다.")
+    return {"receive_period": receive_period, "return_period": return_period}
+
+
 @student_bp.get("/")
 @login_required
 def dashboard():
@@ -76,6 +104,12 @@ def books():
             .group_by(Reservation.book_id)
             .all()
         )
+    availability_states = {}
+    effective_available = {}
+    for book in books:
+        approved_count = approved_counts.get(book.id, 0)
+        effective_available[book.id] = get_effective_available_stock(book.available_stock, approved_count)
+        availability_states[book.id] = get_availability_state(book.available_stock, approved_count)
     return render_template(
         "student/books.html",
         title="만화책 둘러보기",
@@ -83,6 +117,8 @@ def books():
         query=query,
         borrowed_counts=borrowed_counts,
         approved_counts=approved_counts,
+        availability_states=availability_states,
+        effective_available=effective_available,
     )
 
 @student_bp.get("/history")
@@ -103,6 +139,14 @@ def reserve(book_id):
     book = db.session.get(Book, book_id)
     student = current_user.student
     active_statuses = ("pending", "approved", "issued")
+    receive_period = request.form.get("receive_period", type=int)
+    return_period = request.form.get("return_period", type=int)
+    try:
+        validated_periods = validate_reservation_periods(receive_period, return_period)
+    except ValueError as exc:
+        flash(str(exc), "warning")
+        return redirect(url_for("student.books"))
+
     if current_user.role != "student" or not student or not student.is_active:
         flash("활성 학생 계정으로 로그인한 뒤 신청해 주세요.", "danger")
     elif not book or not book.is_active:
@@ -134,8 +178,18 @@ def reserve(book_id):
             queue_number=queue_number,
         )
         db.session.add(reservation)
+        db.session.flush()
+        if book.available_stock <= 0:
+            reservation.note = (
+                f"수령 교시 {validated_periods['receive_period']}교시, "
+                f"반납 교시 {validated_periods['return_period']}교시 예정"
+            )
         db.session.commit()
-        flash(f"신청했습니다. 이 도서의 순번은 {queue_number}번입니다.", "success")
+        flash(
+            f"신청했습니다. 이 도서의 순번은 {queue_number}번입니다. "
+            f"수령은 {validated_periods['receive_period']}교시, 반납은 {validated_periods['return_period']}교시로 예약했습니다.",
+            "success",
+        )
     return redirect(url_for("student.books"))
 
 @student_bp.post("/reservations/<int:reservation_id>/cancel")

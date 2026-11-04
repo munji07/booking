@@ -10,3 +10,4 @@ instance/*.db
 .coverage
 htmlcov/
 .DS_Store
+tests/
